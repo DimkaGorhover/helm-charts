@@ -1,0 +1,108 @@
+{{- if .Values.scheduler.enabled }}
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ .Release.Name }}-scheduler
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: scheduler
+    {{- if .Values.global.labels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.global.labels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.annotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.global.annotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.scheduler.replicaCount | default 1 }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
+      app.kubernetes.io/component: scheduler
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" . | nindent 8 }}
+        app.kubernetes.io/component: scheduler
+        {{- if .Values.global.labels }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.global.labels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.scheduler.podLabels }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.scheduler.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- if .Values.global.annotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.global.annotations "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.scheduler.podAnnotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.scheduler.podAnnotations "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "volcano.scheduler.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ template "volcano.scheduler.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.scheduler.automountServiceAccountToken }}
+      priorityClassName: system-cluster-critical
+      enableServiceLinks: {{ default false .Values.global.enableServiceLinks }}
+      {{- if .Values.scheduler.affinity }}
+      affinity: {{- include "common.tplvalues.render" (dict "value" .Values.scheduler.affinity "context" $) | nindent 8 }}
+      {{- else }}
+      affinity:
+        {{- if .Values.scheduler.podAffinityPreset }}
+        podAffinity: {{- include "common.affinities.pods" (dict "type" .Values.scheduler.podAffinityPreset "component" "scheduler" "context" $) | nindent 10 }}
+        {{- end }}
+        {{- if .Values.scheduler.podAntiAffinityPreset }}
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.scheduler.podAntiAffinityPreset "component" "scheduler" "context" $) | nindent 10 }}
+        {{- end }}
+        {{- if and .Values.scheduler.nodeAffinityPreset .Values.scheduler.nodeAffinityPreset.key }}
+        nodeAffinity: {{- include "common.affinities.nodes" (dict "type" .Values.scheduler.nodeAffinityPreset.type "key" .Values.scheduler.nodeAffinityPreset.key "values" .Values.scheduler.nodeAffinityPreset.values) | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.scheduler.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.scheduler.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.scheduler.priorityClassName }}
+      priorityClassName: {{ .Values.scheduler.priorityClassName | quote }}
+      {{- end }}
+      {{- if .Values.scheduler.schedulerName }}
+      schedulerName: {{ .Values.scheduler.schedulerName }}
+      {{- end }}
+      {{- if .Values.scheduler.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- include "common.tplvalues.render" (dict "value" .Values.scheduler.topologySpreadConstraints "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.scheduler.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.scheduler.tolerations "context" $) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Release.Name }}-scheduler
+          image: "{{ .Values.scheduler.image.registry }}/{{ .Values.scheduler.image.repository }}:{{ .Values.scheduler.image.tag }}"
+          imagePullPolicy: {{ default "IfNotPresent" .Values.scheduler.image.pullPolicy | quote }}
+          {{- if .Values.scheduler.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.scheduler.containerSecurityContext "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          args:
+            - --logtostderr
+            - --scheduler-conf=/volcano.scheduler/volcano-scheduler.conf
+            - --enable-healthz=true
+            - --enable-metrics=true
+            - -v=3
+            {{- if .Values.scheduler.extraFlags }}
+            {{- .Values.scheduler.extraFlags | toYaml | nindent 12 }}
+            {{- end }}
+            - 2>&1
+          {{- if .Values.scheduler.resources }}
+          resources: {{- toYaml .Values.scheduler.resources | nindent 12 }}
+          {{- end }}
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: scheduler-config
+              mountPath: /volcano.scheduler
+            {{- if .Values.scheduler.extraVolumeMounts }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.scheduler.extraVolumeMounts "context" $) | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: scheduler-config
+          configMap:
+            name: {{ .Release.Name }}-scheduler-configmap
+        {{- if .Values.scheduler.extraVolumes }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.scheduler.extraVolumes "context" $) | nindent 8 }}
+        {{- end }}
+{{ end }}

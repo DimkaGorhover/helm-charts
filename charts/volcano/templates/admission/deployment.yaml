@@ -1,0 +1,119 @@
+{{- if .Values.admission.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-admission
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: admission
+    {{- if .Values.global.labels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.global.labels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.annotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.global.annotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.admission.replicaCount | default 1 }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
+      app.kubernetes.io/component: admission
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" . | nindent 8 }}
+        app.kubernetes.io/component: admission
+        {{- if .Values.global.labels }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.global.labels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.admission.podLabels }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.admission.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- if .Values.global.annotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.global.annotations "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.admission.podAnnotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.admission.podAnnotations "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "volcano.admission.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ template "volcano.admission.serviceAccountName" . }}
+      priorityClassName: system-cluster-critical
+      enableServiceLinks: {{ .Values.global.enableServiceLinks | default false }}
+      {{- if .Values.admission.affinity }}
+      affinity: {{- include "common.tplvalues.render" (dict "value" .Values.admission.affinity "context" $) | nindent 8 }}
+      {{- else }}
+      affinity:
+        {{- if .Values.admission.podAffinityPreset }}
+        podAffinity: {{- include "common.affinities.pods" (dict "type" .Values.admission.podAffinityPreset "component" "admission" "context" $) | nindent 10 }}
+        {{- end }}
+        {{- if .Values.admission.podAntiAffinityPreset }}
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.admission.podAntiAffinityPreset "component" "admission" "context" $) | nindent 10 }}
+        {{- end }}
+        {{- if and .Values.admission.nodeAffinityPreset .Values.admission.nodeAffinityPreset.key }}
+        nodeAffinity: {{- include "common.affinities.nodes" (dict "type" .Values.admission.nodeAffinityPreset.type "key" .Values.admission.nodeAffinityPreset.key "values" .Values.admission.nodeAffinityPreset.values) | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.admission.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.admission.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.admission.priorityClassName }}
+      priorityClassName: {{ .Values.admission.priorityClassName | quote }}
+      {{- end }}
+      {{- if .Values.admission.schedulerName }}
+      schedulerName: {{ .Values.admission.schedulerName }}
+      {{- end }}
+      {{- if .Values.admission.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- include "common.tplvalues.render" (dict "value" .Values.admission.topologySpreadConstraints "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.admission.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.admission.tolerations "context" $) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: admission
+          image: "{{ .Values.admission.image.registry }}/{{ .Values.admission.image.repository }}:{{ .Values.admission.image.tag }}"
+          imagePullPolicy: {{ .Values.admission.image.pullPolicy | default .Values.image.pullPolicy | quote }}
+          {{- if .Values.admission.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.admission.containerSecurityContext "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          args:
+            - --enabled-admission={{ join "," .Values.config.admissions }}
+            - --tls-cert-file=/admission.local.config/certificates/tls.crt
+            - --tls-private-key-file=/admission.local.config/certificates/tls.key
+            - --ca-cert-file=/admission.local.config/certificates/ca.crt
+            - --admission-conf=/admission.local.config/configmap/volcano-admission.conf
+            - --webhook-namespace={{ .Release.Namespace }}
+            - --webhook-service-name={{ .Release.Name }}-admission
+            - --logtostderr
+            - --port={{ .Values.admission.config.port }}
+            - -v=4
+            {{- if .Values.admission.extraFlags }}
+            {{- .Values.admission.extraFlags | toYaml | nindent 12 }}
+            {{- end }}
+            - 2>&1
+          {{- if .Values.admission.resources }}
+          resources: {{- toYaml .Values.admission.resources | nindent 12 }}
+          {{- end }}
+          ports:
+            - containerPort: {{ .Values.admission.config.port }}
+              name: https
+          volumeMounts:
+            - mountPath: /admission.local.config/certificates
+              name: admission-certs
+              readOnly: true
+            - mountPath: /admission.local.config/configmap
+              name: admission-config
+            {{- if .Values.admission.extraVolumeMounts }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.admission.extraVolumeMounts "context" $) | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: admission-certs
+          secret:
+            defaultMode: 420
+            secretName: {{ tpl .Values.admission.config.secretName . }}
+        - name: admission-config
+          configMap:
+            name: {{ .Release.Name }}-admission-configmap
+        {{- if .Values.admission.extraVolumes }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.admission.extraVolumes "context" $) | nindent 8 }}
+        {{- end }}
+{{- end }}

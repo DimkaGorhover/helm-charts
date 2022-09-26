@@ -1,0 +1,43 @@
+{{- if .Values.admission.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-admission
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: admission
+  annotations:
+    {{- if .Values.global.annotations }}
+    {{- include "common.tplvalues.render" (dict "value" .Values.global.annotations "context" $) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.admission.service.annotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.admission.service.annotations "context" $) | nindent 4 }}
+    {{- end }}
+spec:
+  type: {{ .Values.admission.service.type }}
+  {{- if and .Values.admission.service.clusterIP (eq .Values.admission.service.type "ClusterIP") }}
+  clusterIP: {{ .Values.admission.service.clusterIP }}
+  {{- end }}
+  {{- if or (eq .Values.admission.service.type "LoadBalancer") (eq .Values.admission.service.type "NodePort") }}
+  externalTrafficPolicy: {{ .Values.admission.service.externalTrafficPolicy | quote }}
+  {{- end }}
+  {{- if and (eq .Values.admission.service.type "LoadBalancer") .Values.admission.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges: {{- toYaml .Values.admission.service.loadBalancerSourceRanges | nindent 4 }}
+  {{- end }}
+  {{- if (and (eq .Values.admission.service.type "LoadBalancer") (not (empty .Values.admission.service.loadBalancerIP))) }}
+  loadBalancerIP: {{ .Values.admission.service.loadBalancerIP }}
+  {{- end }}
+  {{- if .Values.admission.service.sessionAffinity }}
+  sessionAffinity: {{ .Values.admission.service.sessionAffinity }}
+  {{- end }}
+  {{- if .Values.admission.service.sessionAffinityConfig }}
+  sessionAffinityConfig: {{- include "common.tplvalues.render" (dict "value" .Values.admission.service.sessionAffinityConfig "context" $) | nindent 4 }}
+  {{- end }}
+  ports:
+    - port: {{ .Values.admission.service.ports.https }}
+      protocol: TCP
+      targetPort: https
+  selector: {{- include "common.labels.matchLabels" . | nindent 4 }}
+    app.kubernetes.io/component: admission
+  sessionAffinity: None
+{{- end }}

@@ -1,0 +1,41 @@
+{{- if .Values.admission.enabled }}
+{{- if has "/podgroups/mutate" .Values.config.admissions }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ .Release.Name }}-admission-service-podgroups-mutate
+webhooks:
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: {{ .Release.Name }}-admission
+        namespace: {{ .Release.Namespace }}
+        path: /podgroups/mutate
+        port: 443
+    failurePolicy: Fail
+    matchPolicy: Equivalent
+    name: mutatepodgroup.volcano.sh
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - volcano-system
+            - kube-system
+    objectSelector: {}
+    reinvocationPolicy: Never
+    rules:
+      - apiGroups:
+          - scheduling.volcano.sh
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+        resources:
+          - podgroups
+        scope: '*'
+    sideEffects: NoneOnDryRun
+    timeoutSeconds: 10
+{{- end }}
+{{- end }}

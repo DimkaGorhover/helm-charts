@@ -1,0 +1,47 @@
+{{- if .Values.scheduler.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-scheduler
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: scheduler
+  annotations:
+    {{- if .Values.global.annotations }}
+    {{- include "common.tplvalues.render" (dict "value" .Values.global.annotations "context" $) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.scheduler.service.annotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.scheduler.service.annotations "context" $) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.scheduler.service.metricsAnnotations }}
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8080"
+    prometheus.io/scrape: "true"
+    {{- end }}
+spec:
+  type: {{ .Values.scheduler.service.type }}
+  {{- if and .Values.scheduler.service.clusterIP (eq .Values.scheduler.service.type "ClusterIP") }}
+  clusterIP: {{ .Values.scheduler.service.clusterIP }}
+  {{- end }}
+  {{- if or (eq .Values.scheduler.service.type "LoadBalancer") (eq .Values.scheduler.service.type "NodePort") }}
+  externalTrafficPolicy: {{ .Values.scheduler.service.externalTrafficPolicy | quote }}
+  {{- end }}
+  {{- if and (eq .Values.scheduler.service.type "LoadBalancer") .Values.scheduler.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges: {{- toYaml .Values.scheduler.service.loadBalancerSourceRanges | nindent 4 }}
+  {{- end }}
+  {{- if (and (eq .Values.scheduler.service.type "LoadBalancer") (not (empty .Values.scheduler.service.loadBalancerIP))) }}
+  loadBalancerIP: {{ .Values.scheduler.service.loadBalancerIP }}
+  {{- end }}
+  {{- if .Values.scheduler.service.sessionAffinity }}
+  sessionAffinity: {{ .Values.scheduler.service.sessionAffinity }}
+  {{- end }}
+  {{- if .Values.scheduler.service.sessionAffinityConfig }}
+  sessionAffinityConfig: {{- include "common.tplvalues.render" (dict "value" .Values.scheduler.service.sessionAffinityConfig "context" $) | nindent 4 }}
+  {{- end }}
+  ports:
+    - port: {{ .Values.scheduler.service.ports.http }}
+      protocol: TCP
+      targetPort: http
+  selector: {{- include "common.labels.matchLabels" . | nindent 4 }}
+    app.kubernetes.io/component: scheduler
+{{ end }}

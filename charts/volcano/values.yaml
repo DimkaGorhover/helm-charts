@@ -1,0 +1,717 @@
+---
+global:
+  imagePullSecrets: []
+  enableServiceLinks: false
+  labels:
+    test: test # TODO: remove it
+  annotations:
+    test: test # TODO: remove it
+
+image:
+  pullPolicy: IfNotPresent
+
+config:
+  admissionYaml: |-
+    #resourceGroups:
+    #- resourceGroup: management                    # set the resource group name
+    #  object:
+    #    key: namespace                             # set the field and the value to be matched
+    #    value:
+    #    - mng-ns-1
+    #  schedulerName: default-scheduler             # set the scheduler for patching
+    #  tolerations:                                 # set the tolerations for patching
+    #  - effect: NoSchedule
+    #    key: taint
+    #    operator: Exists
+    #  labels:
+    #    volcano.sh/nodetype: management           # set the nodeSelector for patching
+    #- resourceGroup: cpu
+    #  object:
+    #    key: annotation
+    #    value:
+    #    - "volcano.sh/resource-group: cpu"
+    #  schedulerName: volcano
+    #  labels:
+    #    volcano.sh/nodetype: cpu
+    #- resourceGroup: gpu                          # if the object is unsetted, default is:  the key is annotation,
+    #  schedulerName: volcano                      # the annotation key is fixed and is "volcano.sh/resource-group", The corresponding value is the resourceGroup field
+    #  labels:
+    #    volcano.sh/nodetype: gpu
+
+  schedulerYaml: |-
+    ---
+    actions: "enqueue, allocate, backfill"
+    tiers:
+      - plugins:
+          - name: priority
+          - name: gang
+          - name: conformance
+      - plugins:
+          - name: overcommit
+          - name: drf
+          - name: predicates
+          - name: proportion
+          - name: nodeorder
+          - name: binpack
+
+  admissions:
+    - /jobs/mutate
+    - /jobs/validate
+    - /podgroups/mutate
+    - /pods/validate
+    - /pods/mutate
+    - /queues/mutate
+    - /queues/validate
+
+kubeStateMetrics:
+  enabled: false
+
+grafana:
+  dashboards: true # TODO: make false by default
+  namespace: monitoring
+
+admission:
+  ## @param admission.enabled Enable/disable Volcano Admission component
+  ##
+  enabled: true
+
+  ## @param admission.replicaCount Number of Volcano Admission replicas to deploy
+  ##
+  replicaCount: 1
+
+  image:
+    registry: docker.io
+    repository: volcanosh/vc-webhook-manager
+    tag: latest
+    pullPolicy: Always
+
+  config:
+    secretName: "{{ .Release.Name }}-admission"
+    port: 8443
+
+  ## @param admission.extraFlags Extra Flags to passed to Volcano Admission
+  ##
+  extraFlags: []
+
+  ## K8s containers' Security Context for Volcano Admission containers
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+  ## @param admission.containerSecurityContext.enabled Enable container security context for the Volcano Admission containers
+  ## @param admission.containerSecurityContext.runAsUser User ID for the service user running the Volcano Admission containers
+  ## @param admission.containerSecurityContext.runAsNonRoot Force the Volcano Admission containers to run as a non root user
+  ## @param admission.containerSecurityContext.allowPrivilegeEscalation Switch privilegeEscalation possibility on or off for Volcano Admission containers
+  ## @param admission.containerSecurityContext.readOnlyRootFilesystem mount / (root) as a readonly filesystem on Volcano Admission containers
+  ##
+  containerSecurityContext:
+    enabled: false
+    runAsUser: 0
+    runAsGroup: 0
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+
+  ## Volcano Admission containers' resource requests and limits
+  ## ref: https://kubernetes.io/docs/user-guide/compute-resources/
+  ## @param admission.resources.limits The resources limits for the Volcano Admission container
+  ## @param admission.resources.requests The requested resources for the Volcano Admission container
+  ##
+  resources:
+    limits: {}
+    requests: {}
+
+  ## @param admission.podAntiAffinityPreset Volcano Admission pod anti-affinity preset. Ignored if `admission.affinity` is set. Allowed values: `soft` or `hard`
+  ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+  ##
+  podAntiAffinityPreset: soft
+
+  ## Volcano Admission node affinity preset
+  ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
+  ##
+  nodeAffinityPreset:
+    ## @param admission.nodeAffinityPreset.type Volcano Admission node affinity preset type. Ignored if `admission.affinity` is set. Allowed values: `soft` or `hard`
+    ##
+    type: ""
+    ## @param admission.nodeAffinityPreset.key Volcano Admission node label key to match. Ignored if `admission.affinity` is set.
+    ## e.g:
+    ## key: "kubernetes.io/e2e-az-name"
+    ##
+    key: ""
+    ## @param admission.nodeAffinityPreset.values Volcano Admission node label values to match. Ignored if `admission.affinity` is set.
+    ## e.g:
+    ## values:
+    ##   - e2e-az1
+    ##   - e2e-az2
+    ##
+    values: []
+
+  ## @param admission.podLabels Volcano Admission pod labels
+  ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+  ##
+  podLabels: {}
+
+  ## @param admission.podAnnotations Annotations for Volcano Admission pods
+  ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+  ##
+  podAnnotations: {}
+
+  ## @param admission.priorityClassName Volcano Admission priorityClassName
+  ## ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+  ##
+  priorityClassName: ""
+
+  ## @param admission.topologySpreadConstraints Topology Spread Constraints for Volcano Admission pods assignment spread across your cluster among failure-domains
+  ## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/#spread-constraints-for-pods
+  ##
+  topologySpreadConstraints: []
+
+  ## @param admission.schedulerName Name of the k8s scheduler (other than default) for Volcano Admission pods
+  ## ref: https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
+  ##
+  schedulerName: ""
+
+  ## @param admission.extraVolumes Extra volumes to add to Volcano Admission
+  ##
+  extraVolumes: []
+
+  ## @param admission.extraVolumeMounts Extra volume mounts to add to the admission container
+  ##
+  extraVolumeMounts: []
+
+  ## @param admission.automountServiceAccountToken Enable/disable auto mounting of the service account token only for the deployment
+  ##
+  automountServiceAccountToken: true
+
+  ## ServiceAccount configuration
+  ## @param admission.serviceAccount.create Specifies whether a ServiceAccount should be created
+  ## @param admission.serviceAccount.name Name of the service account to use. If not set and create is true, a name is generated using the fullname template.
+  ## @param admission.serviceAccount.annotations Annotations for Volcano Admission Service Account
+  ## @param admission.serviceAccount.automountServiceAccountToken Enable/disable auto mounting of the service account token
+  ##
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+    automountServiceAccountToken: true
+
+  ## Service parameters
+  ##
+  service:
+    ## @param admission.service.ports.http Kubernetes Service port
+    ##
+    ports:
+      https: 443
+
+    ## @param admission.service.type Kubernetes Service type
+    ##
+    type: ClusterIP
+
+    ## @param admission.service.clusterIP %%MAIN_CONTAINER_NAME%% service Cluster IP
+    ## e.g.:
+    ## clusterIP: None
+    ##
+    clusterIP: ""
+
+    ## @param admission.service.loadBalancerIP loadBalancerIP if Volcano Admission service type is `LoadBalancer`
+    ## ref: https://kubernetes.io/docs/user-guide/services/#type-loadbalancer
+    ##
+    loadBalancerIP: ""
+
+    ## @param admission.service.loadBalancerSourceRanges %%MAIN_CONTAINER_NAME%% service Load Balancer sources
+    ## ref: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/#restrict-access-for-loadbalancer-service
+    ## e.g:
+    ## loadBalancerSourceRanges:
+    ##   - 10.10.10.0/24
+    ##
+    loadBalancerSourceRanges: []
+
+    ## @param admission.service.externalTrafficPolicy Enable client source IP preservation
+    ## ref https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip
+    ##
+    externalTrafficPolicy: Cluster
+
+    ## @param admission.service.annotations Annotations for Volcano Admission service (evaluated as a template)
+    ## This can be used to set the LoadBalancer service type to internal only.
+    ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer
+    ##
+    annotations: {}
+
+    metricsAnnotations: true
+
+    ## @param admission.service.labels Extra labels for Volcano Admission service
+    ##
+    labels: {}
+
+    ## @param admission.service.extraPorts Extra ports to expose in the service (normally used with the `sidecar` value)
+    ##
+    extraPorts: []
+
+    ## @param admission.service.sessionAffinity Session Affinity for Kubernetes service, can be "None" or "ClientIP"
+    ## If "ClientIP", consecutive client requests will be directed to the same Pod
+    ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+    ##
+    sessionAffinity: None
+
+    ## @param admission.service.sessionAffinityConfig Additional settings for the sessionAffinity
+    ## sessionAffinityConfig:
+    ##   clientIP:
+    ##     timeoutSeconds: 300
+    ##
+    sessionAffinityConfig: {}
+
+  ## Configure the ingress resource that allows you to access Volcano Admission
+  ## ref: https://kubernetes.io/docs/user-guide/ingress/
+  ##
+  ingress:
+    ## @param admission.ingress.enabled Enable ingress admission resource
+    ##
+    enabled: false
+    ## @param admission.ingress.hostname Default host for the ingress resource
+    ##
+    hostname: volcano-admission.local
+    ## @param admission.ingress.ingressClassName IngressClass that will be be used to implement the Ingress (Kubernetes 1.18+)
+    ## This is supported in Kubernetes 1.18+ and required if you have more than one IngressClass marked as the default for your cluster .
+    ## ref: https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/
+    ##
+    ingressClassName: ""
+    ## @param admission.ingress.annotations Additional annotations for the Ingress resource. To enable certificate autogeneration, place here your cert-manager annotations.
+    ## For a full list of possible ingress annotations, please see
+    ## ref: https://github.com/kubernetes/ingress-nginx/blob/master/docs/user-guide/nginx-configuration/annotations.md
+    ## Use this parameter to set the required annotations for cert-manager, see
+    ## ref: https://cert-manager.io/docs/usage/ingress/#supported-annotations
+    ##
+    ## e.g:
+    ## annotations:
+    ##   kubernetes.io/ingress.class: nginx
+    ##   cert-manager.io/cluster-issuer: cluster-issuer-name
+    ##
+    annotations: {}
+    ## @param admission.ingress.extraHosts The list of additional hostnames to be covered with this ingress record.
+    ## Most likely the hostname above will be enough, but in the event more hosts are needed, this is an array
+    ## extraHosts:
+    ## - name: volcano.local
+    ##   path: /
+    ##   pathType: ImplementationSpecific
+    ##
+    extraHosts: []
+    ## @param admission.ingress.extraTls The tls configuration for additional hostnames to be covered with this ingress record.
+    ## see: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+    ## extraTls:
+    ## - hosts:
+    ##     - volcano.local
+    ##   secretName: volcano.local-tls
+    ##
+    extraTls: []
+    ## @param admission.ingress.secrets If you're providing your own certificates, please use this to add the certificates as secrets
+    ## key and certificate should start with -----BEGIN CERTIFICATE----- or
+    ## -----BEGIN RSA PRIVATE KEY-----
+    ##
+    ## name should line up with a tlsSecret set further up
+    ## If you're using cert-manager, this is unneeded, as it will create the secret for you if it is not set
+    ##
+    ## It is also possible to create and manage the certificates outside of this helm chart
+    ## Please see README.md for more information
+    ## e.g:
+    ## - name: volcano.local-tls
+    ##   key:
+    ##   certificate:
+    ##
+    secrets: []
+    ## @param admission.ingress.extraRules Additional rules to be covered with this ingress record
+    ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-rules
+    ## e.g:
+    ## extraRules:
+    ## - host: example.local
+    ##     http:
+    ##       path: /
+    ##       backend:
+    ##         service:
+    ##           name: example-svc
+    ##           port:
+    ##             name: http
+    ##
+    extraRules: []
+    ## @param admission.ingress.tls Enable TLS configuration for the hostname defined at `admission.ingress.hostname` parameter
+    ## TLS certificates will be retrieved from a TLS secret with name: `{{- printf "%s-tls" .Values.admission.ingress.hostname }}`
+    ## You can:
+    ##   - Use the `admission.ingress.secrets` parameter to create this TLS secret
+    ##   - Rely on cert-manager to create it by setting the corresponding annotations
+    ##   - Rely on Helm to create self-signed certificates by setting `admission.ingress.selfSigned=true`
+    ##
+    tls: false
+    ## @param admission.ingress.selfSigned Create a TLS secret for this ingress record using self-signed certificates generated by Helm
+    ##
+    selfSigned: false
+    ## @param admission.ingress.apiVersion Force Ingress API version (automatically detected if not set)
+    ##
+    apiVersion: ""
+    ## @param admission.ingress.path Ingress path
+    ##
+    path: /
+    ## @param admission.ingress.pathType Ingress path type
+    ##
+    pathType: ImplementationSpecific
+
+controller:
+  ## @param controller.enabled Enable/disable Volcano Controller component
+  ##
+  enabled: true
+
+  ## @param controller.replicaCount Number of Volcano Controller replicas to deploy
+  ##
+  replicaCount: 1
+
+  image:
+    registry: docker.io
+    repository: volcanosh/vc-controller-manager
+    tag: latest
+    pullPolicy: Always
+
+  ## @param controller.extraFlags Extra Flags to passed to Volcano Controller
+  ##
+  extraFlags: []
+
+  ## K8s containers' Security Context for Volcano Controller containers
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+  ## @param controller.containerSecurityContext.enabled Enable container security context for the Volcano Controller containers
+  ## @param controller.containerSecurityContext.runAsUser User ID for the service user running the Volcano Controller containers
+  ## @param controller.containerSecurityContext.runAsNonRoot Force the Volcano Controller containers to run as a non root user
+  ## @param controller.containerSecurityContext.allowPrivilegeEscalation Switch privilegeEscalation possibility on or off for Volcano Controller containers
+  ## @param controller.containerSecurityContext.readOnlyRootFilesystem mount / (root) as a readonly filesystem on Volcano Controller containers
+  ##
+  containerSecurityContext:
+    enabled: false
+    runAsUser: 0
+    runAsGroup: 0
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+
+  ## Volcano Controller containers' resource requests and limits
+  ## ref: https://kubernetes.io/docs/user-guide/compute-resources/
+  ## @param controller.resources.limits The resources limits for the Volcano Controller container
+  ## @param controller.resources.requests The requested resources for the Volcano Controller container
+  ##
+  resources:
+    limits: {}
+    requests: {}
+
+  ## @param controller.podAntiAffinityPreset Volcano Controller pod anti-affinity preset. Ignored if `controller.affinity` is set. Allowed values: `soft` or `hard`
+  ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+  ##
+  podAntiAffinityPreset: soft
+
+  ## Volcano Controller node affinity preset
+  ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
+  ##
+  nodeAffinityPreset:
+    ## @param controller.nodeAffinityPreset.type Volcano Controller node affinity preset type. Ignored if `controller.affinity` is set. Allowed values: `soft` or `hard`
+    ##
+    type: ""
+    ## @param controller.nodeAffinityPreset.key Volcano Controller node label key to match. Ignored if `controller.affinity` is set.
+    ## e.g:
+    ## key: "kubernetes.io/e2e-az-name"
+    ##
+    key: ""
+    ## @param controller.nodeAffinityPreset.values Volcano Controller node label values to match. Ignored if `controller.affinity` is set.
+    ## e.g:
+    ## values:
+    ##   - e2e-az1
+    ##   - e2e-az2
+    ##
+    values: []
+
+  ## @param controller.podLabels Volcano Controller pod labels
+  ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+  ##
+  podLabels: {}
+
+  ## @param controller.podAnnotations Annotations for Volcano Controller pods
+  ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+  ##
+  podAnnotations: {}
+
+  ## @param controller.priorityClassName Volcano Controller priorityClassName
+  ## ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+  ##
+  priorityClassName: ""
+
+  ## @param controller.topologySpreadConstraints Topology Spread Constraints for Volcano Controller pods assignment spread across your cluster among failure-domains
+  ## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/#spread-constraints-for-pods
+  ##
+  topologySpreadConstraints: []
+
+  ## @param controller.schedulerName Name of the k8s scheduler (other than default) for Volcano Controller pods
+  ## ref: https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
+  ##
+  schedulerName: ""
+
+  ## @param controller.extraVolumes Extra volumes to add to Volcano Controller
+  ##
+  extraVolumes: []
+
+  ## @param controller.extraVolumeMounts Extra volume mounts to add to the controller container
+  ##
+  extraVolumeMounts: []
+
+  ## @param controller.automountServiceAccountToken Enable/disable auto mounting of the service account token only for the deployment
+  ##
+  automountServiceAccountToken: true
+
+  ## ServiceAccount configuration
+  ## @param controller.serviceAccount.create Specifies whether a ServiceAccount should be created
+  ## @param controller.serviceAccount.name Name of the service account to use. If not set and create is true, a name is generated using the fullname template.
+  ## @param controller.serviceAccount.annotations Annotations for Volcano Controller Service Account
+  ## @param controller.serviceAccount.automountServiceAccountToken Enable/disable auto mounting of the service account token
+  ##
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+    automountServiceAccountToken: true
+
+  ## Service parameters
+  ##
+  service:
+    ## @param controller.service.ports.http Kubernetes Service port
+    ##
+    ports:
+      http: 8080
+
+    ## @param controller.service.type Kubernetes Service type
+    ##
+    type: ClusterIP
+
+    ## @param controller.service.clusterIP %%MAIN_CONTAINER_NAME%% service Cluster IP
+    ## e.g.:
+    ## clusterIP: None
+    ##
+    clusterIP: ""
+
+    ## @param controller.service.loadBalancerIP loadBalancerIP if Volcano Controller service type is `LoadBalancer`
+    ## ref: https://kubernetes.io/docs/user-guide/services/#type-loadbalancer
+    ##
+    loadBalancerIP: ""
+
+    ## @param controller.service.loadBalancerSourceRanges %%MAIN_CONTAINER_NAME%% service Load Balancer sources
+    ## ref: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/#restrict-access-for-loadbalancer-service
+    ## e.g:
+    ## loadBalancerSourceRanges:
+    ##   - 10.10.10.0/24
+    ##
+    loadBalancerSourceRanges: []
+
+    ## @param controller.service.externalTrafficPolicy Enable client source IP preservation
+    ## ref https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip
+    ##
+    externalTrafficPolicy: Cluster
+
+    ## @param controller.service.annotations Annotations for Volcano Controller service (evaluated as a template)
+    ## This can be used to set the LoadBalancer service type to internal only.
+    ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer
+    ##
+    annotations: {}
+
+    metricsAnnotations: true
+
+    ## @param controller.service.labels Extra labels for Volcano Controller service
+    ##
+    labels: {}
+
+    ## @param controller.service.extraPorts Extra ports to expose in the service (normally used with the `sidecar` value)
+    ##
+    extraPorts: []
+
+    ## @param controller.service.sessionAffinity Session Affinity for Kubernetes service, can be "None" or "ClientIP"
+    ## If "ClientIP", consecutive client requests will be directed to the same Pod
+    ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+    ##
+    sessionAffinity: None
+
+    ## @param controller.service.sessionAffinityConfig Additional settings for the sessionAffinity
+    ## sessionAffinityConfig:
+    ##   clientIP:
+    ##     timeoutSeconds: 300
+    ##
+    sessionAffinityConfig: {}
+
+scheduler:
+  ## @param scheduler.enabled Enable/disable Volcano Scheduler component
+  ##
+  enabled: true
+
+  ## @param scheduler.replicaCount Number of Volcano Scheduler replicas to deploy
+  ##
+  replicaCount: 1
+
+  image:
+    registry: docker.io
+    repository: volcanosh/vc-scheduler
+    tag: latest
+    pullPolicy: Always
+
+  ## @param scheduler.extraFlags Extra Flags to passed to Volcano Scheduler
+  ##
+  extraFlags: []
+
+  ## K8s containers' Security Context for Volcano Scheduler containers
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+  ## @param scheduler.containerSecurityContext.enabled Enable container security context for the Volcano Scheduler containers
+  ## @param scheduler.containerSecurityContext.runAsUser User ID for the service user running the Volcano Scheduler containers
+  ## @param scheduler.containerSecurityContext.runAsNonRoot Force the Volcano Scheduler containers to run as a non root user
+  ## @param scheduler.containerSecurityContext.allowPrivilegeEscalation Switch privilegeEscalation possibility on or off for Volcano Scheduler containers
+  ## @param scheduler.containerSecurityContext.readOnlyRootFilesystem mount / (root) as a readonly filesystem on Volcano Scheduler containers
+  ##
+  containerSecurityContext:
+    enabled: false
+    runAsUser: 0
+    runAsGroup: 0
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+
+  ## Volcano Scheduler containers' resource requests and limits
+  ## ref: https://kubernetes.io/docs/user-guide/compute-resources/
+  ## @param scheduler.resources.limits The resources limits for the Volcano Scheduler container
+  ## @param scheduler.resources.requests The requested resources for the Volcano Scheduler container
+  ##
+  resources:
+    limits: {}
+    requests: {}
+
+  ## @param scheduler.podAntiAffinityPreset Volcano Scheduler pod anti-affinity preset. Ignored if `scheduler.affinity` is set. Allowed values: `soft` or `hard`
+  ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+  ##
+  podAntiAffinityPreset: soft
+
+  ## Volcano Scheduler node affinity preset
+  ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
+  ##
+  nodeAffinityPreset:
+    ## @param scheduler.nodeAffinityPreset.type Volcano Scheduler node affinity preset type. Ignored if `scheduler.affinity` is set. Allowed values: `soft` or `hard`
+    ##
+    type: ""
+    ## @param scheduler.nodeAffinityPreset.key Volcano Scheduler node label key to match. Ignored if `scheduler.affinity` is set.
+    ## e.g:
+    ## key: "kubernetes.io/e2e-az-name"
+    ##
+    key: ""
+    ## @param scheduler.nodeAffinityPreset.values Volcano Scheduler node label values to match. Ignored if `scheduler.affinity` is set.
+    ## e.g:
+    ## values:
+    ##   - e2e-az1
+    ##   - e2e-az2
+    ##
+    values: []
+
+  ## @param scheduler.podLabels Volcano Scheduler pod labels
+  ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+  ##
+  podLabels: {}
+
+  ## @param scheduler.podAnnotations Annotations for Volcano Scheduler pods
+  ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+  ##
+  podAnnotations: {}
+
+  ## @param scheduler.priorityClassName Volcano Scheduler priorityClassName
+  ## ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+  ##
+  priorityClassName: ""
+
+  ## @param scheduler.topologySpreadConstraints Topology Spread Constraints for Volcano Scheduler pods assignment spread across your cluster among failure-domains
+  ## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/#spread-constraints-for-pods
+  ##
+  topologySpreadConstraints: []
+
+  ## @param scheduler.schedulerName Name of the k8s scheduler (other than default) for Volcano Scheduler pods
+  ## ref: https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
+  ##
+  schedulerName: ""
+
+  ## @param scheduler.extraVolumes Extra volumes to add to Volcano Scheduler
+  ##
+  extraVolumes: []
+
+  ## @param scheduler.extraVolumeMounts Extra volume mounts to add to the scheduler container
+  ##
+  extraVolumeMounts: []
+
+  ## @param scheduler.automountServiceAccountToken Enable/disable auto mounting of the service account token only for the deployment
+  ##
+  automountServiceAccountToken: true
+
+  ## ServiceAccount configuration
+  ## @param scheduler.serviceAccount.create Specifies whether a ServiceAccount should be created
+  ## @param scheduler.serviceAccount.name Name of the service account to use. If not set and create is true, a name is generated using the fullname template.
+  ## @param scheduler.serviceAccount.annotations Annotations for Volcano Scheduler Service Account
+  ## @param scheduler.serviceAccount.automountServiceAccountToken Enable/disable auto mounting of the service account token
+  ##
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+    automountServiceAccountToken: true
+
+  ## Service parameters
+  ##
+  service:
+    ## @param scheduler.service.ports.http Kubernetes Service port
+    ##
+    ports:
+      http: 8080
+
+    ## @param scheduler.service.type Kubernetes Service type
+    ##
+    type: ClusterIP
+
+    ## @param scheduler.service.clusterIP %%MAIN_CONTAINER_NAME%% service Cluster IP
+    ## e.g.:
+    ## clusterIP: None
+    ##
+    clusterIP: ""
+
+    ## @param scheduler.service.loadBalancerIP loadBalancerIP if Volcano Scheduler service type is `LoadBalancer`
+    ## ref: https://kubernetes.io/docs/user-guide/services/#type-loadbalancer
+    ##
+    loadBalancerIP: ""
+
+    ## @param scheduler.service.loadBalancerSourceRanges %%MAIN_CONTAINER_NAME%% service Load Balancer sources
+    ## ref: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/#restrict-access-for-loadbalancer-service
+    ## e.g:
+    ## loadBalancerSourceRanges:
+    ##   - 10.10.10.0/24
+    ##
+    loadBalancerSourceRanges: []
+
+    ## @param scheduler.service.externalTrafficPolicy Enable client source IP preservation
+    ## ref https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip
+    ##
+    externalTrafficPolicy: Cluster
+
+    ## @param scheduler.service.annotations Annotations for Volcano Scheduler service (evaluated as a template)
+    ## This can be used to set the LoadBalancer service type to internal only.
+    ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer
+    ##
+    annotations: {}
+
+    metricsAnnotations: true
+
+    ## @param scheduler.service.labels Extra labels for Volcano Scheduler service
+    ##
+    labels: {}
+
+    ## @param scheduler.service.extraPorts Extra ports to expose in the service (normally used with the `sidecar` value)
+    ##
+    extraPorts: []
+
+    ## @param scheduler.service.sessionAffinity Session Affinity for Kubernetes service, can be "None" or "ClientIP"
+    ## If "ClientIP", consecutive client requests will be directed to the same Pod
+    ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+    ##
+    sessionAffinity: None
+
+    ## @param scheduler.service.sessionAffinityConfig Additional settings for the sessionAffinity
+    ## sessionAffinityConfig:
+    ##   clientIP:
+    ##     timeoutSeconds: 300
+    ##
+    sessionAffinityConfig: {}
