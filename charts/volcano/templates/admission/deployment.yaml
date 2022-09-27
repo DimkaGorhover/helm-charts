@@ -71,7 +71,7 @@ spec:
       containers:
         - name: admission
           image: "{{ .Values.admission.image.registry }}/{{ .Values.admission.image.repository }}:{{ .Values.admission.image.tag }}"
-          imagePullPolicy: {{ .Values.admission.image.pullPolicy | default .Values.image.pullPolicy | quote }}
+          imagePullPolicy: {{ coalesce .Values.admission.image.pullPolicy .Values.image.pullPolicy "IfNotPresent" | quote }}
           {{- if .Values.admission.containerSecurityContext.enabled }}
           securityContext: {{- omit .Values.admission.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}

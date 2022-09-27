@@ -72,7 +72,7 @@ spec:
       containers:
         - name: {{ .Release.Name }}-scheduler
           image: "{{ .Values.scheduler.image.registry }}/{{ .Values.scheduler.image.repository }}:{{ .Values.scheduler.image.tag }}"
-          imagePullPolicy: {{ default "IfNotPresent" .Values.scheduler.image.pullPolicy | quote }}
+          imagePullPolicy: {{ coalesce .Values.scheduler.image.pullPolicy .Values.image.pullPolicy "IfNotPresent" | quote }}
           {{- if .Values.scheduler.containerSecurityContext.enabled }}
           securityContext: {{- omit .Values.scheduler.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}

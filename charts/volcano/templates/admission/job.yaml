@@ -54,9 +54,9 @@ spec:
       tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.admission.tolerations "context" $) | nindent 8 }}
       {{- end }}
       containers:
-        - name: main
+        - name: admission
           image: "{{ .Values.admission.image.registry }}/{{ .Values.admission.image.repository }}:{{ .Values.admission.image.tag }}"
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: {{ coalesce .Values.admission.image.pullPolicy .Values.image.pullPolicy "IfNotPresent" | quote }}
           command:
             - "./gen-admission-secret.sh"
             - "--service"
