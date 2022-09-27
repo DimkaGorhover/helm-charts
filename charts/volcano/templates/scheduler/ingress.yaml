@@ -1,0 +1,58 @@
+{{- if .Values.scheduler.ingress.enabled -}}
+apiVersion: {{ include "common.capabilities.ingress.apiVersion" . }}
+kind: Ingress
+metadata:
+  name: {{ include "common.names.fullname" . }}-scheduler
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: scheduler
+    {{- if .Values.global.labels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.global.labels "context" $ ) | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- if .Values.global.annotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.global.annotations "context" $ ) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.scheduler.ingress.annotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.scheduler.ingress.annotations "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if and .Values.scheduler.ingress.ingressClassName (include "common.ingress.supportsIngressClassname" .) }}
+  ingressClassName: {{ .Values.scheduler.ingress.ingressClassName | quote }}
+  {{- end }}
+  rules:
+    {{- if .Values.scheduler.ingress.hostname }}
+    - host: {{ .Values.scheduler.ingress.hostname }}
+      http:
+        paths:
+          - path: {{ .Values.scheduler.ingress.path }}
+            {{- if eq "true" (include "common.ingress.supportsPathType" .) }}
+            pathType: {{ .Values.scheduler.ingress.pathType }}
+            {{- end }}
+            backend: {{- include "common.ingress.backend" (dict "serviceName" (printf "%s-%s"  (include "common.names.fullname" .) "scheduler") "servicePort" "http" "context" $)  | nindent 14 }}
+    {{- end }}
+    {{- range .Values.scheduler.ingress.extraHosts }}
+    - host: {{ .name }}
+      http:
+        paths:
+          - path: {{ default "/" .path }}
+            {{- if eq "true" (include "common.ingress.supportsPathType" $) }}
+            pathType: {{ default "ImplementationSpecific" .pathType }}
+            {{- end }}
+            backend: {{- include "common.ingress.backend" (dict "serviceName" (printf "%s-%s"  (include "common.names.fullname" $) "scheduler") "servicePort" "http" "context" $)  | nindent 14 }}
+    {{- end }}
+    {{- if .Values.scheduler.ingress.extraRules }}
+    {{- include "common.tplvalues.render" (dict "value" .Values.scheduler.ingress.extraRules "context" $) | nindent 4 }}
+    {{- end }}
+  {{- if or (and .Values.scheduler.ingress.tls (or (include "common.ingress.certManagerRequest" ( dict "annotations" .Values.scheduler.ingress.annotations )) .Values.scheduler.ingress.selfSigned)) .Values.scheduler.ingress.extraTls }}
+  tls:
+    {{- if and .Values.scheduler.ingress.tls (or (include "common.ingress.certManagerRequest" ( dict "annotations" .Values.scheduler.ingress.annotations )) .Values.scheduler.ingress.selfSigned) }}
+    - hosts:
+        - {{ .Values.scheduler.ingress.hostname }}
+      secretName: {{ printf "%s-tls" .Values.scheduler.ingress.hostname }}
+    {{- end }}
+    {{- if .Values.scheduler.ingress.extraTls }}
+    {{- toYaml .Values.scheduler.ingress.extraTls | nindent 4 }}
+    {{- end }}
+  {{- end }}
+{{- end }}
