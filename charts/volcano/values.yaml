@@ -61,9 +61,6 @@ config:
     - /queues/mutate
     - /queues/validate
 
-kubeStateMetrics:
-  enabled: false
-
 grafana:
   dashboards: false
   namespace: monitoring
