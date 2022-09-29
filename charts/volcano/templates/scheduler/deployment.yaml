@@ -95,10 +95,19 @@ spec:
           volumeMounts:
             - name: scheduler-config
               mountPath: /volcano.scheduler
+            - name: admission-certs
+              subPath: ca.crt
+              mountPath: /etc/ssl/certs/volcano-admission.crt
+              readOnly: true
             {{- if .Values.scheduler.extraVolumeMounts }}
             {{- include "common.tplvalues.render" (dict "value" .Values.scheduler.extraVolumeMounts "context" $) | nindent 12 }}
             {{- end }}
       volumes:
+        - name: admission-certs
+          secret:
+            secretName: {{ tpl .Values.admission.config.secretName . | quote }}
+            items:
+              - { key: ca.crt, path: ca.crt }
         - name: scheduler-config
           configMap:
             name: {{ .Release.Name }}-scheduler-configmap
