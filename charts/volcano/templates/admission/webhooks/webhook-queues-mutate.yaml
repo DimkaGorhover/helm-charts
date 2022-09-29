@@ -9,7 +9,7 @@ webhooks:
       - v1
     clientConfig:
       service:
-        name: {{ .Release.Name }}-admission
+        name: {{ template "volcano.admission.serviceName" . }}
         namespace: {{ .Release.Namespace }}
         path: /queues/mutate
         port: 443

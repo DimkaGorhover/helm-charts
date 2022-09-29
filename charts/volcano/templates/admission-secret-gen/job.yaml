@@ -58,11 +58,27 @@ spec:
           image: "{{ .Values.admission.image.registry }}/{{ .Values.admission.image.repository }}:{{ .Values.admission.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ coalesce .Values.admission.image.pullPolicy .Values.global.image.pullPolicy "IfNotPresent" | quote }}
           command:
-            - "./gen-admission-secret.sh"
-            - "--service"
-            - "{{ .Release.Name }}-admission"
-            - "--namespace"
-            - "{{ .Release.Namespace }}"
-            - "--secret"
-            - "{{ tpl .Values.admission.config.secretName . }}"
+            - sh
+            - -c
+          args:
+            - |-
+              set -eu
+              set -o pipefail
+              set -o errexit
+              set -o nounset
+              secret=$(kubectl get secrets -n {{ .Release.Namespace }} | awk '{if ($1=="{{ tpl .Values.admission.config.secretName . }}") print $1}')
+              if [ -z "${secret}" ]; then
+                ./gen-admission-secret.sh \
+                    --service {{ template "volcano.admission.serviceName" . }} \
+                    --namespace {{ .Release.Namespace }} \
+                    --secret {{ tpl .Values.admission.config.secretName . }}
+              fi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
 {{- end }}
