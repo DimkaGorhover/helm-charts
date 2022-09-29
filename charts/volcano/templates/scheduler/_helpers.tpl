@@ -14,5 +14,5 @@ Create the name of the service account for scheduler
 Return the proper Docker Image Registry Secret Names
 */}}
 {{- define "volcano.scheduler.imagePullSecrets" -}}
-{{- include "common.images.pullSecrets" (dict "images" (list .Values.image .Values.scheduler.image) "global" .Values.global) -}}
+{{- include "common.images.pullSecrets" (dict "images" (list .Values.global.image .Values.scheduler.image) "global" .Values.global) -}}
 {{- end -}}

@@ -4,9 +4,8 @@ global:
   enableServiceLinks: false
   labels: {}
   annotations: {}
-
-image:
-  pullPolicy: IfNotPresent
+  image:
+    pullPolicy: IfNotPresent
 
 config:
   admissionYaml: |-
@@ -77,8 +76,8 @@ admission:
   image:
     registry: docker.io
     repository: volcanosh/vc-webhook-manager
-    tag: latest
-    pullPolicy: Always
+    # tag: latest
+    # pullPolicy: Always
 
   config:
     secretName: "{{ .Release.Name }}-admission"
@@ -264,8 +263,8 @@ controller:
   image:
     registry: docker.io
     repository: volcanosh/vc-controller-manager
-    tag: latest
-    pullPolicy: Always
+    # tag: latest
+    # pullPolicy: Always
 
   ## @param controller.extraFlags Extra Flags to passed to Volcano Controller
   ##
@@ -447,8 +446,8 @@ scheduler:
   image:
     registry: docker.io
     repository: volcanosh/vc-scheduler
-    tag: latest
-    pullPolicy: Always
+    # tag: latest
+    # pullPolicy: Always
 
   ## @param scheduler.extraFlags Extra Flags to passed to Volcano Scheduler
   ##

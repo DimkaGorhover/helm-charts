@@ -2,16 +2,16 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Release.Name }}-admission-init
+  name: {{ printf "%s-admission-secret-gen" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" }}
   namespace: {{ .Release.Namespace }}
   labels: {{- include "common.labels.standard" . | nindent 4 }}
-    app.kubernetes.io/component: admission-init
+    app.kubernetes.io/component: admission-secret-gen
     {{- if .Values.global.labels }}
     {{- include "common.tplvalues.render" ( dict "value" .Values.global.labels "context" $ ) | nindent 4 }}
     {{- end }}
   annotations:
     "helm.sh/hook": "pre-install"
-    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-weight": "2"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
     {{- if .Values.global.annotations }}
     {{- include "common.tplvalues.render" ( dict "value" .Values.global.annotations "context" $ ) | nindent 4 }}
@@ -21,18 +21,18 @@ spec:
   template:
     spec:
       restartPolicy: Never
-      {{- include "volcano.admission.imagePullSecrets" . | nindent 6 }}
-      serviceAccountName: {{ template "volcano.admission.serviceAccountName" . }}
+      {{- include "volcano.admissionSecretGen.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ template "volcano.admissionSecretGen.serviceAccountName" . }}
       enableServiceLinks: {{ .Values.global.enableServiceLinks | default false }}
       {{- if .Values.admission.affinity }}
       affinity: {{- include "common.tplvalues.render" (dict "value" .Values.admission.affinity "context" $) | nindent 8 }}
       {{- else }}
       affinity:
         {{- if .Values.admission.podAffinityPreset }}
-        podAffinity: {{- include "common.affinities.pods" (dict "type" .Values.admission.podAffinityPreset "component" "admission-init" "context" $) | nindent 10 }}
+        podAffinity: {{- include "common.affinities.pods" (dict "type" .Values.admission.podAffinityPreset "component" "admission-secret-gen" "context" $) | nindent 10 }}
         {{- end }}
         {{- if .Values.admission.podAntiAffinityPreset }}
-        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.admission.podAntiAffinityPreset "component" "admission-init" "context" $) | nindent 10 }}
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.admission.podAntiAffinityPreset "component" "admission-secret-gen" "context" $) | nindent 10 }}
         {{- end }}
         {{- if and .Values.admission.nodeAffinityPreset .Values.admission.nodeAffinityPreset.key }}
         nodeAffinity: {{- include "common.affinities.nodes" (dict "type" .Values.admission.nodeAffinityPreset.type "key" .Values.admission.nodeAffinityPreset.key "values" .Values.admission.nodeAffinityPreset.values) | nindent 10 }}
@@ -55,8 +55,8 @@ spec:
       {{- end }}
       containers:
         - name: admission
-          image: "{{ .Values.admission.image.registry }}/{{ .Values.admission.image.repository }}:{{ .Values.admission.image.tag }}"
-          imagePullPolicy: {{ coalesce .Values.admission.image.pullPolicy .Values.image.pullPolicy "IfNotPresent" | quote }}
+          image: "{{ .Values.admission.image.registry }}/{{ .Values.admission.image.repository }}:{{ .Values.admission.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ coalesce .Values.admission.image.pullPolicy .Values.global.image.pullPolicy "IfNotPresent" | quote }}
           command:
             - "./gen-admission-secret.sh"
             - "--service"

@@ -14,5 +14,5 @@ Create the name of the service account for controller
 Return the proper Docker Image Registry Secret Names
 */}}
 {{- define "volcano.controller.imagePullSecrets" -}}
-{{- include "common.images.pullSecrets" (dict "images" (list .Values.image .Values.controller.image) "global" .Values.global) -}}
+{{- include "common.images.pullSecrets" (dict "images" (list .Values.global.image .Values.controller.image) "global" .Values.global) -}}
 {{- end -}}

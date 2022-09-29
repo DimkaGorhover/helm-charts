@@ -71,8 +71,8 @@ spec:
       {{- end }}
       containers:
         - name: {{ .Release.Name }}-scheduler
-          image: "{{ .Values.scheduler.image.registry }}/{{ .Values.scheduler.image.repository }}:{{ .Values.scheduler.image.tag }}"
-          imagePullPolicy: {{ coalesce .Values.scheduler.image.pullPolicy .Values.image.pullPolicy "IfNotPresent" | quote }}
+          image: "{{ .Values.scheduler.image.registry }}/{{ .Values.scheduler.image.repository }}:{{ .Values.scheduler.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ coalesce .Values.scheduler.image.pullPolicy .Values.global.image.pullPolicy "IfNotPresent" | quote }}
           {{- if .Values.scheduler.containerSecurityContext.enabled }}
           securityContext: {{- omit .Values.scheduler.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}

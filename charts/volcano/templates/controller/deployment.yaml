@@ -70,8 +70,8 @@ spec:
       {{- end }}
       containers:
         - name: controller
-          image: "{{ .Values.controller.image.registry }}/{{ .Values.controller.image.repository }}:{{ .Values.controller.image.tag }}"
-          imagePullPolicy: {{ coalesce .Values.controller.image.pullPolicy .Values.image.pullPolicy "IfNotPresent" | quote }}
+          image: "{{ .Values.controller.image.registry }}/{{ .Values.controller.image.repository }}:{{ .Values.controller.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ coalesce .Values.controller.image.pullPolicy .Values.global.image.pullPolicy "IfNotPresent" | quote }}
           {{- if .Values.controller.containerSecurityContext.enabled }}
           securityContext: {{- omit .Values.controller.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}
