@@ -1,8 +1,8 @@
-{{- if .Values.scheduler.enabled }}
+{{- if and .Values.scheduler.enabled .Values.scheduler.serviceAccount.create }}
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{ .Release.Name }}-scheduler
+  name: {{ include "common.names.fullname" . }}-scheduler
   labels: {{- include "common.labels.standard" . | nindent 4 }}
     app.kubernetes.io/component: scheduler
     {{- if .Values.global.labels }}
@@ -13,8 +13,8 @@ metadata:
   {{- end }}
 subjects:
   - kind: ServiceAccount
-    name: {{ .Release.Name }}-scheduler
-    namespace: {{ .Release.Namespace }}
+    name: {{ include "common.names.fullname" . }}-scheduler
+    namespace: {{ include "common.names.namespace" . }}
 roleRef:
   kind: ClusterRole
   name: {{ template "volcano.scheduler.serviceAccountName" . }}

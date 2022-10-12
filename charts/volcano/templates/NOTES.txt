@@ -1,6 +1,11 @@
 Thank you for installing {{ .Chart.Name }}.
 
-Your release is named {{ .Release.Name }}.
+Your release is named "{{ include "common.names.fullname" . }}".
 
 For more information on volcano, visit:
 https://volcano.sh/
+
+{{- $name := (include "common.names.fullname" .) }}
+{{- if not (eq $name "volcano") }}
+{{ printf "\n\n[FATAL]: Release Name must be \"volcano\" (actual: %s), because this name is hard-codded inside docker image" $name | fail }}
+{{- end }}

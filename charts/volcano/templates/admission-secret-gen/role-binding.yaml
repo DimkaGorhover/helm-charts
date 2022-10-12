@@ -2,7 +2,7 @@
 apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
 kind: RoleBinding
 metadata:
-  name: {{ printf "%s-admission-secret-gen" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" }}
+  name: {{ include "common.names.fullname" . }}-admission-secret-gen
   namespace: {{ include "common.names.namespace" . | quote }}
   annotations:
     "helm.sh/hook": "pre-install,pre-upgrade"
@@ -16,5 +16,5 @@ roleRef:
   name: {{ printf "%s-admission-secret-gen" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" }}
 subjects:
   - kind: ServiceAccount
-    name: {{ template "volcano.admissionSecretGen.serviceAccountName" . }}
+    name: {{ printf "%s-admission-secret-gen" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" }}
 {{- end }}

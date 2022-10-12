@@ -2,8 +2,8 @@
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  name: {{ .Release.Name }}-scheduler
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "common.names.fullname" . }}-scheduler
+  namespace: {{ include "common.names.namespace" . }}
   labels: {{- include "common.labels.standard" . | nindent 4 }}
     app.kubernetes.io/component: scheduler
     {{- if .Values.global.labels }}
@@ -36,7 +36,9 @@ spec:
         {{- end }}
     spec:
       {{- include "volcano.scheduler.imagePullSecrets" . | nindent 6 }}
+      {{- if .Values.scheduler.serviceAccount.create}}
       serviceAccountName: {{ template "volcano.scheduler.serviceAccountName" . }}
+      {{- end }}
       automountServiceAccountToken: {{ .Values.scheduler.automountServiceAccountToken }}
       priorityClassName: system-cluster-critical
       enableServiceLinks: {{ default false .Values.global.enableServiceLinks }}
@@ -70,7 +72,7 @@ spec:
       tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.scheduler.tolerations "context" $) | nindent 8 }}
       {{- end }}
       containers:
-        - name: {{ .Release.Name }}-scheduler
+        - name: {{ include "common.names.fullname" . }}-scheduler
           image: "{{ .Values.scheduler.image.registry }}/{{ .Values.scheduler.image.repository }}:{{ .Values.scheduler.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ coalesce .Values.scheduler.image.pullPolicy .Values.global.image.pullPolicy "IfNotPresent" | quote }}
           {{- if .Values.scheduler.containerSecurityContext.enabled }}
@@ -81,7 +83,7 @@ spec:
             - --scheduler-conf=/volcano.scheduler/volcano-scheduler.conf
             - --enable-healthz=true
             - --enable-metrics=true
-            - -v=3
+            - -v={{ .Values.config.loglevel | default 0 }}
             {{- if .Values.scheduler.extraFlags }}
             {{- .Values.scheduler.extraFlags | toYaml | nindent 12 }}
             {{- end }}
@@ -110,7 +112,7 @@ spec:
               - { key: ca.crt, path: ca.crt }
         - name: scheduler-config
           configMap:
-            name: {{ .Release.Name }}-scheduler-configmap
+            name: {{ include "common.names.fullname" . }}-scheduler-configmap
         {{- if .Values.scheduler.extraVolumes }}
         {{- include "common.tplvalues.render" (dict "value" .Values.scheduler.extraVolumes "context" $) | nindent 8 }}
         {{- end }}

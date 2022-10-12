@@ -2,8 +2,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-admission
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "common.names.fullname" . }}-admission
+  namespace: {{ include "common.names.namespace" . }}
   labels: {{- include "common.labels.standard" . | nindent 4 }}
     app.kubernetes.io/component: admission
     {{- if .Values.global.labels }}
@@ -36,7 +36,9 @@ spec:
         {{- end }}
     spec:
       {{- include "volcano.admission.imagePullSecrets" . | nindent 6 }}
+      {{- if .Values.admission.serviceAccount.create }}
       serviceAccountName: {{ template "volcano.admission.serviceAccountName" . }}
+      {{- end }}
       priorityClassName: system-cluster-critical
       enableServiceLinks: {{ .Values.global.enableServiceLinks | default false }}
       {{- if .Values.admission.affinity }}
@@ -81,11 +83,11 @@ spec:
             - --tls-private-key-file=/admission.local.config/certificates/tls.key
             - --ca-cert-file=/admission.local.config/certificates/ca.crt
             - --admission-conf=/admission.local.config/configmap/volcano-admission.conf
-            - --webhook-namespace={{ .Release.Namespace }}
-            - --webhook-service-name={{ .Release.Name }}-admission
+            - --webhook-namespace={{ include "common.names.namespace" . }}
+            - --webhook-service-name={{ include "common.names.fullname" . }}-admission
             - --logtostderr
             - --port={{ .Values.admission.config.port }}
-            - -v=4
+            - -v={{ .Values.config.loglevel | default 0 }}
             {{- if .Values.admission.extraFlags }}
             {{- .Values.admission.extraFlags | toYaml | nindent 12 }}
             {{- end }}
@@ -109,10 +111,10 @@ spec:
         - name: admission-certs
           secret:
             defaultMode: 420
-            secretName: {{ tpl .Values.admission.config.secretName . }}
+            secretName: {{ tpl .Values.admission.config.secretName . | quote }}
         - name: admission-config
           configMap:
-            name: {{ .Release.Name }}-admission-configmap
+            name: {{ include "common.names.fullname" . }}-admission-configmap
         {{- if .Values.admission.extraVolumes }}
         {{- include "common.tplvalues.render" (dict "value" .Values.admission.extraVolumes "context" $) | nindent 8 }}
         {{- end }}
