@@ -2,8 +2,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}-scheduler-configmap
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "common.names.fullname" . }}-scheduler-configmap
+  namespace: {{ include "common.names.namespace" . }}
   labels: {{- include "common.labels.standard" . | nindent 4 }}
     app.kubernetes.io/component: scheduler
     {{- if .Values.global.labels }}

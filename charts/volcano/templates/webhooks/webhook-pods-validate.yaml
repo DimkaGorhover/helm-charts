@@ -1,16 +1,24 @@
-{{- if .Values.admission.enabled }}
-{{- if has "/pods/validate" .Values.config.admissions }}
+{{- if and .Values.admission.enabled .Values.webhooks.enabled (has "/pods/validate" .Values.config.admissions) }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  name: {{ .Release.Name }}-admission-service-pods-validate
+  name: {{ include "volcano.webhook.prefix" . }}-pods-validate
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: webhook
+    {{- if .Values.global.labels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.global.labels "context" $ ) | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- if .Values.global.annotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.global.annotations "context" $ ) | nindent 4 }}
+    {{- end }}
 webhooks:
   - admissionReviewVersions:
       - v1
     clientConfig:
       service:
         name: {{ template "volcano.admission.serviceName" . }}
-        namespace: {{ .Release.Namespace }}
+        namespace: {{ include "common.names.namespace" . }}
         path: /pods/validate
         port: 443
     failurePolicy: Fail
@@ -22,7 +30,6 @@ webhooks:
           operator: NotIn
           values:
             - volcano-system
-            - kube-system
     objectSelector: {}
     rules:
       - apiGroups:
@@ -36,5 +43,4 @@ webhooks:
         scope: '*'
     sideEffects: NoneOnDryRun
     timeoutSeconds: 10
-{{- end }}
 {{- end }}

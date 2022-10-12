@@ -2,8 +2,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-controller
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "common.names.fullname" . }}-controller
+  namespace: {{ include "common.names.namespace" . }}
   labels: {{- include "common.labels.standard" . | nindent 4 }}
     app.kubernetes.io/component: controller
     {{- if .Values.global.labels }}
@@ -78,7 +78,7 @@ spec:
           args:
             - --logtostderr
             - --enable-healthz=true
-            - -v=4
+            - -v={{ .Values.config.loglevel | default 0 }}
             {{- if .Values.controller.extraFlags }}
             {{- .Values.controller.extraFlags | toYaml | nindent 12 }}
             {{- end }}

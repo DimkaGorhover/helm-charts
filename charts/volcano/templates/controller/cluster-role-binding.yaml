@@ -2,7 +2,7 @@
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{ .Release.Name }}-controller
+  name: {{ include "common.names.fullname" . }}-controller
   labels: {{- include "common.labels.standard" . | nindent 4 }}
     app.kubernetes.io/component: controller
     {{- if .Values.global.labels }}
@@ -14,9 +14,9 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: {{ template "volcano.controller.serviceAccountName" . }}
-    namespace: {{ .Release.Namespace }}
+    namespace: {{ include "common.names.namespace" . }}
 roleRef:
   kind: ClusterRole
-  name: {{ .Release.Name }}-controller
+  name: {{ include "common.names.fullname" . }}-controller
   apiGroup: rbac.authorization.k8s.io
 {{- end }}

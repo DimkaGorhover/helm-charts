@@ -9,3 +9,7 @@ bases
 v1beta1
 {{- end -}}
 {{- end -}}
+
+{{- define "volcano.webhook.prefix" -}}
+{{ include "common.names.fullname" . }}-admission-service
+{{- end -}}

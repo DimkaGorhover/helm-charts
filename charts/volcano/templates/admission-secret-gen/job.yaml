@@ -3,7 +3,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ printf "%s-admission-secret-gen" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" }}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "common.names.namespace" . }}
   labels: {{- include "common.labels.standard" . | nindent 4 }}
     app.kubernetes.io/component: admission-secret-gen
     {{- if .Values.global.labels }}
@@ -19,10 +19,26 @@ metadata:
 spec:
   backoffLimit: 3
   template:
+    metadata:
+      labels: {{- include "common.labels.standard" . | nindent 8 }}
+        app.kubernetes.io/component: webhooks-cleanup
+        {{- if .Values.global.labels }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.global.labels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.admission.podLabels }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.admission.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- if .Values.global.annotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.global.annotations "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.admission.podAnnotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.admission.podAnnotations "context" $) | nindent 8 }}
+        {{- end }}
     spec:
       restartPolicy: Never
       {{- include "volcano.admissionSecretGen.imagePullSecrets" . | nindent 6 }}
-      serviceAccountName: {{ template "volcano.admissionSecretGen.serviceAccountName" . }}
+      serviceAccountName: {{ printf "%s-admission-secret-gen" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" }}
       enableServiceLinks: {{ .Values.global.enableServiceLinks | default false }}
       {{- if .Values.admission.affinity }}
       affinity: {{- include "common.tplvalues.render" (dict "value" .Values.admission.affinity "context" $) | nindent 8 }}
@@ -60,17 +76,16 @@ spec:
           command:
             - sh
             - -c
-          args:
             - |-
               set -eu
               set -o pipefail
               set -o errexit
               set -o nounset
-              secret=$(kubectl get secrets -n {{ .Release.Namespace }} | awk '{if ($1=="{{ tpl .Values.admission.config.secretName . }}") print $1}')
+              secret=$(kubectl get secrets -n {{ include "common.names.namespace" . }} | awk '{if ($1=="{{ tpl .Values.admission.config.secretName . }}") print $1}')
               if [ -z "${secret}" ]; then
                 ./gen-admission-secret.sh \
                     --service {{ template "volcano.admission.serviceName" . }} \
-                    --namespace {{ .Release.Namespace }} \
+                    --namespace {{ include "common.names.namespace" . }} \
                     --secret {{ tpl .Values.admission.config.secretName . }}
               fi
           volumeMounts:

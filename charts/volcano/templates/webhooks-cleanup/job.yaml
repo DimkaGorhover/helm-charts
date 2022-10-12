@@ -1,0 +1,127 @@
+{{- if and .Values.admission.enabled .Values.webhooks.cleanup.enabled .Values.webhooks.enabled .Values.webhooks.cleanup.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "common.names.fullname" . }}-webhooks-cleanup
+  namespace: {{ include "common.names.namespace" . }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: webhooks-cleanup
+    {{- if .Values.global.labels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.global.labels "context" $ ) | nindent 4 }}
+    {{- end }}
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    {{- if .Values.global.annotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.global.annotations "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" . | nindent 8 }}
+        app.kubernetes.io/component: webhooks-cleanup
+        {{- if .Values.global.labels }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.global.labels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.webhooks.cleanup.podLabels }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.webhooks.cleanup.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- if .Values.global.annotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.global.annotations "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.webhooks.cleanup.podAnnotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.webhooks.cleanup.podAnnotations "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      restartPolicy: Never
+      {{- include "volcano.webhookCleanup.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "common.names.fullname" . }}-webhooks-cleanup
+      enableServiceLinks: {{ .Values.global.enableServiceLinks | default false }}
+      {{- if .Values.webhooks.cleanup.affinity }}
+      affinity: {{- include "common.tplvalues.render" (dict "value" .Values.webhooks.cleanup.affinity "context" $) | nindent 8 }}
+      {{- else }}
+      affinity:
+        {{- if .Values.webhooks.cleanup.podAffinityPreset }}
+        podAffinity: {{- include "common.affinities.pods" (dict "type" .Values.webhooks.cleanup.podAffinityPreset "component" "webhooks-cleanup" "context" $) | nindent 10 }}
+        {{- end }}
+        {{- if .Values.webhooks.cleanup.podAntiAffinityPreset }}
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.webhooks.cleanup.podAntiAffinityPreset "component" "webhooks-cleanup" "context" $) | nindent 10 }}
+        {{- end }}
+        {{- if and .Values.webhooks.cleanup.nodeAffinityPreset .Values.webhooks.cleanup.nodeAffinityPreset.key }}
+        nodeAffinity: {{- include "common.affinities.nodes" (dict "type" .Values.webhooks.cleanup.nodeAffinityPreset.type "key" .Values.webhooks.cleanup.nodeAffinityPreset.key "values" .Values.webhooks.cleanup.nodeAffinityPreset.values) | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.webhooks.cleanup.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.webhooks.cleanup.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- with .Values.webhooks.cleanup.priorityClassName }}
+      priorityClassName: {{ . | quote }}
+      {{- end }}
+      {{- with .Values.webhooks.cleanup.schedulerName }}
+      schedulerName: {{ . }}
+      {{- end }}
+      {{- if .Values.webhooks.cleanup.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- include "common.tplvalues.render" (dict "value" .Values.webhooks.cleanup.topologySpreadConstraints "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.webhooks.cleanup.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.webhooks.cleanup.tolerations "context" $) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: kubectl
+          image: "{{ .Values.webhooks.cleanup.image.registry | default "docker.io" }}/{{ .Values.webhooks.cleanup.image.repository }}:{{ .Values.webhooks.cleanup.image.tag | default "latest" }}"
+          imagePullPolicy: {{ coalesce .Values.webhooks.cleanup.image.pullPolicy .Values.global.image.pullPolicy "IfNotPresent" | quote }}
+          securityContext:
+            readOnlyRootFilesystem: true
+          command:
+            - sh
+            - -c
+            - |-
+              {{- if (has "/jobs/mutate" .Values.config.admissions) }}
+              kubectl delete MutatingWebhookConfiguration {{ include "volcano.webhook.prefix" . }}-jobs-mutate;
+              {{- end }}
+
+              {{- if (has "/jobs/validate" .Values.config.admissions) }}
+              kubectl delete ValidatingWebhookConfiguration {{ include "volcano.webhook.prefix" . }}-jobs-validate;
+              {{- end }}
+
+              {{- if (has "/podgroups/mutate" .Values.config.admissions) }}
+              kubectl delete MutatingWebhookConfiguration {{ include "volcano.webhook.prefix" . }}-podgroups-mutate;
+              {{- end }}
+
+              {{- if (has "/pods/mutate" .Values.config.admissions) }}
+              kubectl delete MutatingWebhookConfiguration {{ include "volcano.webhook.prefix" . }}-pods-mutate;
+              {{- end }}
+
+              {{- if (has "/pods/validate" .Values.config.admissions) }}
+              kubectl delete ValidatingWebhookConfiguration {{ include "volcano.webhook.prefix" . }}-pods-validate;
+              {{- end }}
+
+              {{- if (has "/queues/mutate" .Values.config.admissions) }}
+              kubectl delete MutatingWebhookConfiguration {{ include "volcano.webhook.prefix" . }}-queues-mutate;
+              {{- end }}
+
+              {{- if (has "/queues/validate" .Values.config.admissions) }}
+              kubectl delete ValidatingWebhookConfiguration {{ include "volcano.webhook.prefix" . }}-queues-validate;
+              {{- end }}
+          resources:
+            requests:
+              cpu: "0.1"
+              memory: 32Mi
+              ephemeral-storage: 16Mi
+            limits:
+              cpu: "0.1"
+              memory: 32Mi
+              ephemeral-storage: 16Mi
+          env:
+            - { name: HOME, value: /tmp }
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 32Mi
+{{- end }}
