@@ -4,7 +4,7 @@ bases stands for v1.
 */}}
 {{- define "crd_version" -}} 
 {{- if .Capabilities.APIVersions.Has "apiextensions.k8s.io/v1" -}}
-bases
+v1
 {{- else -}}
 v1beta1
 {{- end -}}
