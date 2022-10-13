@@ -1,0 +1,19 @@
+{{- if and .Values.crds.enabled .Values.crds.cleanup.enabled }}
+apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+kind: RoleBinding
+metadata:
+  name: {{ include "common.names.fullname" . }}-crds-cleanup
+  namespace: {{ include "common.names.namespace" . }}
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: crds-cleanup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "common.names.fullname" . }}-crds-cleanup
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "common.names.fullname" . }}-crds-cleanup
+{{- end }}

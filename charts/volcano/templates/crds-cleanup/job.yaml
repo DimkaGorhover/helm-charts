@@ -1,0 +1,105 @@
+{{- if and .Values.crds.enabled .Values.crds.cleanup.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "common.names.fullname" . }}-crds-cleanup
+  namespace: {{ include "common.names.namespace" . }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: crds-cleanup
+    {{- if .Values.global.labels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.global.labels "context" $ ) | nindent 4 }}
+    {{- end }}
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    {{- if .Values.global.annotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.global.annotations "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" . | nindent 8 }}
+        app.kubernetes.io/component: crds-cleanup
+        {{- if .Values.global.labels }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.global.labels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.crds.cleanup.podLabels }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.crds.cleanup.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- if .Values.global.annotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.global.annotations "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.crds.cleanup.podAnnotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.crds.cleanup.podAnnotations "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      restartPolicy: Never
+      {{- include "volcano.crdsCleanup.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "common.names.fullname" . }}-crds-cleanup
+      enableServiceLinks: {{ .Values.global.enableServiceLinks | default false }}
+      {{- if .Values.crds.cleanup.affinity }}
+      affinity: {{- include "common.tplvalues.render" (dict "value" .Values.crds.cleanup.affinity "context" $) | nindent 8 }}
+      {{- else }}
+      affinity:
+        {{- if .Values.crds.cleanup.podAffinityPreset }}
+        podAffinity: {{- include "common.affinities.pods" (dict "type" .Values.crds.cleanup.podAffinityPreset "component" "crds-cleanup" "context" $) | nindent 10 }}
+        {{- end }}
+        {{- if .Values.crds.cleanup.podAntiAffinityPreset }}
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.crds.cleanup.podAntiAffinityPreset "component" "crds-cleanup" "context" $) | nindent 10 }}
+        {{- end }}
+        {{- if and .Values.crds.cleanup.nodeAffinityPreset .Values.crds.cleanup.nodeAffinityPreset.key }}
+        nodeAffinity: {{- include "common.affinities.nodes" (dict "type" .Values.crds.cleanup.nodeAffinityPreset.type "key" .Values.crds.cleanup.nodeAffinityPreset.key "values" .Values.crds.cleanup.nodeAffinityPreset.values) | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.crds.cleanup.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.crds.cleanup.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- with .Values.crds.cleanup.priorityClassName }}
+      priorityClassName: {{ . | quote }}
+      {{- end }}
+      {{- with .Values.crds.cleanup.schedulerName }}
+      schedulerName: {{ . }}
+      {{- end }}
+      {{- if .Values.crds.cleanup.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- include "common.tplvalues.render" (dict "value" .Values.crds.cleanup.topologySpreadConstraints "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.crds.cleanup.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.crds.cleanup.tolerations "context" $) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: kubectl
+          image: "{{ .Values.crds.cleanup.image.registry | default "docker.io" }}/{{ .Values.crds.cleanup.image.repository }}:{{ .Values.crds.cleanup.image.tag | default "latest" }}"
+          imagePullPolicy: {{ coalesce .Values.crds.cleanup.image.pullPolicy .Values.global.image.pullPolicy "IfNotPresent" | quote }}
+          securityContext:
+            readOnlyRootFilesystem: true
+          command:
+            - sh
+            - -c
+            - |-
+              kubectl delete crds jobs.batch.volcano.sh;
+              kubectl delete crds commands.bus.volcano.sh;
+              kubectl delete crds numatopologies.nodeinfo.volcano.sh;
+              kubectl delete crds podgroups.scheduling.volcano.sh;
+              kubectl delete crds queues.scheduling.volcano.sh;
+          resources:
+            requests:
+              cpu: "0.1"
+              memory: 32Mi
+              ephemeral-storage: 16Mi
+            limits:
+              cpu: "0.1"
+              memory: 32Mi
+              ephemeral-storage: 16Mi
+          env:
+            - { name: HOME, value: /tmp }
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 32Mi
+{{- end }}

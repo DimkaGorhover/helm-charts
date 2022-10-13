@@ -1,0 +1,3 @@
+{{- if .Values.crds.enabled }}
+{{- tpl ($.Files.Get (printf "crd/%s/bus.volcano.sh_commands.yaml" (include "crd_version" .))) . }}
+{{- end }}
