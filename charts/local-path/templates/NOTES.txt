@@ -1,0 +1,8 @@
+{{- if .Values.storageClass }}
+{{- with $reclaimPolicy := .Values.storageClass.reclaimPolicy }}
+{{- $validReclaimPolicies := (list "Delete" "Retain") }}
+{{- if not (has $reclaimPolicy $validReclaimPolicies) }}
+{{ printf "Storage Class Reclaim Polciy must be one of %s. Actual is [%s]" $validReclaimPolicies $reclaimPolicy | fail }}
+{{- end }}
+{{- end }}
+{{- end }}

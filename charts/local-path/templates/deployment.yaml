@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "common.names.fullname" . }}-provisioner
+  namespace: {{ include "common.names.namespace" . }}
+  labels:
+    {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: provisioner
+  annotations:
+    checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "common.labels.matchLabels" . | nindent 6 }}
+      app.kubernetes.io/component: provisioner
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "common.labels.standard" . | nindent 8 }}
+        app.kubernetes.io/component: provisioner
+        {{- if .Values.podLabels }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.podLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if .Values.podAnnotations }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.podAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+    spec:
+      enableServiceLinks: false
+      {{- if and .Values.rbac (eq true .Values.rbac.create) }}
+      serviceAccountName: {{ include "common.names.fullname" . }}-provisioner
+      {{- end }}
+      {{- if .Values.affinity }}
+      affinity: {{- include "common.tplvalues.render" (dict "value" .Values.affinity "context" $) | nindent 8 }}
+      {{- else }}
+      affinity:
+        {{- if .Values.podAffinityPreset }}
+        podAffinity: {{- include "common.affinities.pods" (dict "type" .Values.podAffinityPreset "component" "provisioner" "context" $) | nindent 10 }}
+        {{- end }}
+        {{- if .Values.podAntiAffinityPreset }}
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.podAntiAffinityPreset "component" "provisioner" "context" $) | nindent 10 }}
+        {{- end }}
+        {{- if and .Values.nodeAffinityPreset .Values.nodeAffinityPreset.key }}
+        nodeAffinity: {{- include "common.affinities.nodes" (dict "type" .Values.nodeAffinityPreset.type "key" .Values.nodeAffinityPreset.key "values" .Values.nodeAffinityPreset.values) | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName }}
+      {{- end }}
+      {{- if .Values.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- include "common.tplvalues.render" (dict "value" .Values.topologySpreadConstraints "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" $) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ include "common.names.name" . }}-provisioner
+          image: {{ include "local-path.image" . }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          command:
+            - local-path-provisioner
+            {{- if .Values.config.debug }}
+            - --debug
+            {{- end }}
+            - start
+            - --configmap-name
+            - {{ include "common.names.fullname" . }}-config
+            {{- if and .Values.rbac (eq true .Values.rbac.create) }}
+            - --service-account-name
+            - {{ include "common.names.fullname" . }}-provisioner
+            {{- end }}
+            - --config
+            - /etc/config/config.json
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            {{- if .Values.extraEnv }}
+            {{- include "common.tplvalues.render" ( dict "value" .Values.extraEnv "context" $ ) | nindent 12 }}
+            {{- end }}
+          imagePullPolicy: IfNotPresent
+          {{- if .Values.resources }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - mountPath: /etc/config
+              name: config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "common.names.fullname" . }}-config

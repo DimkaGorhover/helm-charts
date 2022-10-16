@@ -1,0 +1,16 @@
+{{- if and .Values.storageClass (eq true .Values.storageClass.create) }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.storageClass.name | default (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" | quote }}
+  annotations:
+    {{- if (eq true .Values.storageClass.defaultClass) }}
+    storageclass.kubernetes.io/is-default-class: "true"
+    {{- end }}
+  labels:
+    {{- include "common.labels.standard" . | nindent 4}}
+
+provisioner: {{ .Values.storageClass.provisionerName | default "rancher.io/local-path" | quote }}
+reclaimPolicy: {{ .Values.storageClass.reclaimPolicy | default "Delete" }}
+volumeBindingMode: {{ .Values.storageClass.volumeBindingMode | default "WaitForFirstConsumer" }}
+{{- end }}

@@ -1,0 +1,17 @@
+apiVersion: v2
+description: A Helm chart for Local Path Storage Class
+name: local-path
+version: 0.0.1
+appVersion: v0.0.22
+home: https://github.com/rancher/local-path-provisioner
+sources:
+  - https://github.com/rancher/local-path-provisioner
+maintainers:
+  - name: Dmytro Horkhover
+    email: gd.mail.89@gmail.com
+dependencies:
+  - name: common
+    repository: https://charts.bitnami.com/bitnami
+    tags:
+      - bitnami-common
+    version: 2.x.x

@@ -1,0 +1,220 @@
+---
+global:
+  image:
+    pullPolicy: IfNotPresent
+
+image:
+  # registry: docker.io
+  repository: rancher/local-path-provisioner
+  # tag: ""
+  # pullPolicy: IfNotPresent
+
+## @param replicaCount Number of Local-Path Provisioner replicas to deploy
+##
+replicaCount: 1
+
+## K8s Security Context
+## https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+## @param podSecurityContext.enabled Enable security context for Pgpool
+## @param podSecurityContext.fsGroup Group ID for the Pgpool filesystem
+##
+podSecurityContext:
+  enabled: true
+  fsGroup: 1001
+
+## Container Security Context
+## https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+## @param containerSecurityContext.enabled Enable container security context
+## @param containerSecurityContext.runAsUser User ID for the Pgpool container
+## @param containerSecurityContext.runAsNonRoot Set Pgpool containers' Security Context runAsNonRoot
+## @param containerSecurityContext.readOnlyRootFilesystem Set Pgpool containers' Security Context runAsNonRoot
+## e.g:
+##   containerSecurityContext:
+##     enabled: true
+##     capabilities:
+##       drop: ["NET_RAW"]
+##     readOnlyRootFilesystem: true
+##
+containerSecurityContext:
+  enabled: true
+  # runAsUser: 1001
+  # runAsNonRoot: true
+  readOnlyRootFilesystem: false
+
+## Local-Path Provisioner containers' resource requests and limits
+## ref: https://kubernetes.io/docs/user-guide/compute-resources/
+## @param resources.limits The resources limits for the Local-Path Provisioner container
+## @param resources.requests The requested resources for the Local-Path Provisioner container
+##
+resources:
+  requests:
+    cpu: "0.01"
+    memory: 32Mi
+    ephemeral-storage: 128Mi
+  limits:
+    cpu: "0.1"
+    memory: 64Mi
+    ephemeral-storage: 128Mi
+
+## @param podAntiAffinityPreset Local-Path Provisioner pod anti-affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+##
+podAntiAffinityPreset: soft
+
+## Local-Path Provisioner node affinity preset
+## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
+##
+nodeAffinityPreset:
+  ## @param nodeAffinityPreset.type Local-Path Provisioner node affinity preset type. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+  ##
+  type: ""
+  ## @param nodeAffinityPreset.key Local-Path Provisioner node label key to match. Ignored if `affinity` is set.
+  ## e.g:
+  ## key: "kubernetes.io/e2e-az-name"
+  ##
+  key: ""
+  ## @param nodeAffinityPreset.values Local-Path Provisioner node label values to match. Ignored if `affinity` is set.
+  ## e.g:
+  ## values:
+  ##   - e2e-az1
+  ##   - e2e-az2
+  ##
+  values: []
+
+## @param podLabels Local-Path Provisioner pod labels
+## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+##
+podLabels: {}
+
+## @param podAnnotations Annotations for Local-Path Provisioner pods
+## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+##
+podAnnotations: {}
+
+## @param priorityClassName Local-Path Provisioner priorityClassName
+## ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+##
+priorityClassName: ""
+
+## @param topologySpreadConstraints Topology Spread Constraints for Local-Path Provisioner pods assignment spread across your cluster among failure-domains
+## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/#spread-constraints-for-pods
+##
+topologySpreadConstraints: []
+
+## @param schedulerName Name of the k8s scheduler (other than default) for Local-Path Provisioner pods
+## ref: https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
+##
+schedulerName: ""
+
+extraEnv: []
+# extraEnv:
+#   - name: POD_UID
+#     valueFrom:
+#       fieldRef:
+#         fieldPath: metadata.uid
+
+config:
+  debug: true
+  pretty: true
+  nodePathMap:
+    - node: DEFAULT_PATH_FOR_NON_LISTED_NODES
+      paths:
+        - /opt/{{ include "common.names.fullname" . }}-provisioner
+    - node: sfpa-padn001
+      paths: &padn0Paths
+        - /data/disk-1/{{ include "common.names.fullname" . }}-provisioner
+        - /data/disk-2/{{ include "common.names.fullname" . }}-provisioner
+        - /data/disk-3/{{ include "common.names.fullname" . }}-provisioner
+        - /data/disk-4/{{ include "common.names.fullname" . }}-provisioner
+        - /data/disk-5/{{ include "common.names.fullname" . }}-provisioner
+        - /data/disk-6/{{ include "common.names.fullname" . }}-provisioner
+        - /data/disk-7/{{ include "common.names.fullname" . }}-provisioner
+        - /data/disk-8/{{ include "common.names.fullname" . }}-provisioner
+        - /data/disk-9/{{ include "common.names.fullname" . }}-provisioner
+        - /data/disk-10/{{ include "common.names.fullname" . }}-provisioner
+        - /data/disk-11/{{ include "common.names.fullname" . }}-provisioner
+        - /data/disk-12/{{ include "common.names.fullname" . }}-provisioner
+    - node: sfpa-padn002
+      paths: *padn0Paths
+    - node: sfpa-padn003
+      paths: *padn0Paths
+    - node: sfpa-padn004
+      paths: *padn0Paths
+
+  setupScript: |-
+    #!/bin/sh
+    set -eu
+    set -o errexit
+    set -o nounset
+    mkdir -m 0777 -p "${VOL_DIR}"
+
+  teardownScript: |-
+    #!/bin/sh
+    set -eu
+    set -o errexit
+    set -o nounset
+    rm -rf "${VOL_DIR}"
+
+rbac:
+  create: true
+
+## For creating the StorageClass automatically:
+storageClass:
+  create: true
+
+  ## Set a provisioner name. If unset, a name will be generated.
+  # provisionerName: rancher.io/local-path
+
+  ## Set StorageClass as the default StorageClass
+  ## Ignored if storageClass.create is false
+  defaultClass: false
+
+  ## Set a StorageClass name
+  ## Ignored if storageClass.create is false
+  name: ""
+
+  ## ReclaimPolicy field of the class, which can be either Delete or Retain
+  reclaimPolicy: ""
+
+  # volumeBindingMode: ""
+
+helper:
+  image:
+    # registry: docker.io
+    repository: busybox
+    tag: stable
+    # pullPolicy: IfNotPresent
+
+  ## Local-Path Helper Pod containers' resource requests and limits
+  ## ref: https://kubernetes.io/docs/user-guide/compute-resources/
+  ## @param helper.resources.limits The resources limits for the Local-Path Helper Pod container
+  ## @param helper.resources.requests The requested resources for the Local-Path Helper Pod container
+  ##
+  resources:
+    requests:
+      cpu: "0.1"
+      memory: 16Mi
+      ephemeral-storage: 16Mi
+    limits:
+      cpu: "0.1"
+      memory: 16Mi
+      ephemeral-storage: 16Mi
+
+  ## Container Security Context
+  ## https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+  ## @param helper.containerSecurityContext.enabled Enable container security context
+  ## @param helper.containerSecurityContext.runAsUser User ID for the Pgpool container
+  ## @param helper.containerSecurityContext.runAsNonRoot Set Pgpool containers' Security Context runAsNonRoot
+  ## @param helper.containerSecurityContext.readOnlyRootFilesystem Set Pgpool containers' Security Context runAsNonRoot
+  ## e.g:
+  ##   containerSecurityContext:
+  ##     enabled: true
+  ##     capabilities:
+  ##       drop: ["NET_RAW"]
+  ##     readOnlyRootFilesystem: true
+  ##
+  containerSecurityContext:
+    enabled: true
+    # runAsUser: 1001
+    # runAsNonRoot: true
+    readOnlyRootFilesystem: false
