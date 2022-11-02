@@ -122,18 +122,18 @@ config:
         - /opt/{{ include "common.names.fullname" . }}-provisioner
     - node: sfpa-padn001
       paths: &padn0Paths
-        - /data/disk-1/{{ include "common.names.fullname" . }}-provisioner
-        - /data/disk-2/{{ include "common.names.fullname" . }}-provisioner
-        - /data/disk-3/{{ include "common.names.fullname" . }}-provisioner
-        - /data/disk-4/{{ include "common.names.fullname" . }}-provisioner
-        - /data/disk-5/{{ include "common.names.fullname" . }}-provisioner
-        - /data/disk-6/{{ include "common.names.fullname" . }}-provisioner
-        - /data/disk-7/{{ include "common.names.fullname" . }}-provisioner
-        - /data/disk-8/{{ include "common.names.fullname" . }}-provisioner
-        - /data/disk-9/{{ include "common.names.fullname" . }}-provisioner
-        - /data/disk-10/{{ include "common.names.fullname" . }}-provisioner
-        - /data/disk-11/{{ include "common.names.fullname" . }}-provisioner
-        - /data/disk-12/{{ include "common.names.fullname" . }}-provisioner
+        - '{{ printf "/data/disk-1/%s-provisioner" (include "common.names.fullname" .) }}'
+        - '{{ printf "/data/disk-2/%s-provisioner" (include "common.names.fullname" .) }}'
+        - '{{ printf "/data/disk-3/%s-provisioner" (include "common.names.fullname" .) }}'
+        - '{{ printf "/data/disk-4/%s-provisioner" (include "common.names.fullname" .) }}'
+        - '{{ printf "/data/disk-5/%s-provisioner" (include "common.names.fullname" .) }}'
+        - '{{ printf "/data/disk-6/%s-provisioner" (include "common.names.fullname" .) }}'
+        - '{{ printf "/data/disk-7/%s-provisioner" (include "common.names.fullname" .) }}'
+        - '{{ printf "/data/disk-8/%s-provisioner" (include "common.names.fullname" .) }}'
+        - '{{ printf "/data/disk-9/%s-provisioner" (include "common.names.fullname" .) }}'
+        - '{{ printf "/data/disk-10/%s-provisioner" (include "common.names.fullname" .) }}'
+        - '{{ printf "/data/disk-11/%s-provisioner" (include "common.names.fullname" .) }}'
+        - '{{ printf "/data/disk-12/%s-provisioner" (include "common.names.fullname" .) }}'
     - node: sfpa-padn002
       paths: *padn0Paths
     - node: sfpa-padn003

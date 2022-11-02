@@ -21,8 +21,8 @@
 {{- with .Values.helper.image.registry -}}
 {{- $registry = . -}}
 {{- end -}}
-{{- with .Values.helper.image.registry -}}
-{{- $registry = . -}}
+{{- with .Values.helper.image.repository -}}
+{{- $repository = . -}}
 {{- end -}}
 {{- with .Values.helper.image.tag -}}
 {{- $tag = . -}}
