@@ -7,8 +7,14 @@ metadata:
     {{- if (eq true .Values.storageClass.defaultClass) }}
     storageclass.kubernetes.io/is-default-class: "true"
     {{- end }}
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
   labels:
     {{- include "common.labels.standard" . | nindent 4}}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
 
 provisioner: {{ .Values.storageClass.provisionerName | default "rancher.io/local-path" | quote }}
 reclaimPolicy: {{ .Values.storageClass.reclaimPolicy | default "Delete" }}

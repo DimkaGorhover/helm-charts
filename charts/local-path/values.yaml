@@ -3,6 +3,14 @@ global:
   image:
     pullPolicy: IfNotPresent
 
+## @param commonAnnotations Annotations to add to all deployed objects
+##
+commonAnnotations: {}
+
+## @param commonLabels Labels to add to all deployed objects
+##
+commonLabels: {}
+
 image:
   # registry: docker.io
   repository: rancher/local-path-provisioner
@@ -119,7 +127,7 @@ config:
   nodePathMap:
     - node: DEFAULT_PATH_FOR_NON_LISTED_NODES
       paths:
-        - /opt/{{ include "common.names.fullname" . }}-provisioner
+        - '/opt/{{ printf "%s-provisioner" (include "common.names.fullname" .) }}'
     - node: sfpa-padn001
       paths: &padn0Paths
         - '{{ printf "/data/disk-1/%s-provisioner" (include "common.names.fullname" .) }}'

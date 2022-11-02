@@ -1,7 +1,7 @@
 apiVersion: v2
 description: A Helm chart for Local Path Storage Class
 name: local-path
-version: 0.0.1
+version: 0.0.2
 appVersion: v0.0.22
 home: https://github.com/rancher/local-path-provisioner
 sources:
