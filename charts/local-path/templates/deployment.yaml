@@ -44,24 +44,29 @@ spec:
     spec:
       enableServiceLinks: false
       {{- if and .Values.rbac (eq true .Values.rbac.create) }}
-      serviceAccountName: {{ printf "%s-%s" (include "common.names.fullname" .) $component }}
+      serviceAccountName: {{ printf "%s-%s" (include "common.names.fullname" $) $component | quote }}
       {{- end }}
       {{- if .Values.affinity }}
-      affinity: {{- include "common.tplvalues.render" (dict "value" .Values.affinity "context" $) | nindent 8 }}
+      affinity:
+        {{- include "common.tplvalues.render" (dict "value" .Values.affinity "context" $) | nindent 8 }}
       {{- else }}
       affinity:
         {{- if .Values.podAffinityPreset }}
-        podAffinity: {{- include "common.affinities.pods" (dict "type" .Values.podAffinityPreset "component" $component "context" $) | nindent 10 }}
+        podAffinity:
+          {{- include "common.affinities.pods" (dict "type" .Values.podAffinityPreset "component" $component "context" $) | nindent 10 }}
         {{- end }}
         {{- if .Values.podAntiAffinityPreset }}
-        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.podAntiAffinityPreset "component" $component "context" $) | nindent 10 }}
+        podAntiAffinity:
+          {{- include "common.affinities.pods" (dict "type" .Values.podAntiAffinityPreset "component" $component "context" $) | nindent 10 }}
         {{- end }}
         {{- if and .Values.nodeAffinityPreset .Values.nodeAffinityPreset.key }}
-        nodeAffinity: {{- include "common.affinities.nodes" (dict "type" .Values.nodeAffinityPreset.type "key" .Values.nodeAffinityPreset.key "values" .Values.nodeAffinityPreset.values) | nindent 10 }}
+        nodeAffinity:
+          {{- include "common.affinities.nodes" (dict "type" .Values.nodeAffinityPreset.type "key" .Values.nodeAffinityPreset.key "values" .Values.nodeAffinityPreset.values) | nindent 10 }}
         {{- end }}
       {{- end }}
       {{- if .Values.nodeSelector }}
-      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.nodeSelector "context" $) | nindent 8 }}
+      nodeSelector:
+        {{- include "common.tplvalues.render" (dict "value" .Values.nodeSelector "context" $) | nindent 8 }}
       {{- end }}
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName | quote }}
@@ -70,14 +75,17 @@ spec:
       schedulerName: {{ .Values.schedulerName }}
       {{- end }}
       {{- if .Values.topologySpreadConstraints }}
-      topologySpreadConstraints: {{- include "common.tplvalues.render" (dict "value" .Values.topologySpreadConstraints "context" $) | nindent 8 }}
+      topologySpreadConstraints:
+        {{- include "common.tplvalues.render" (dict "value" .Values.topologySpreadConstraints "context" $) | nindent 8 }}
       {{- end }}
       {{- if .Values.tolerations }}
-      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" $) | nindent 8 }}
+      tolerations:
+        {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" $) | nindent 8 }}
       {{- end }}
       containers:
         - name: {{ printf "%s-%s" (include "common.names.name" .) $component }}
           image: {{ include "local-path.image" . }}
+          imagePullPolicy: IfNotPresent
           {{- if .Values.containerSecurityContext.enabled }}
           securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}
@@ -88,7 +96,7 @@ spec:
             {{- end }}
             - start
             - --configmap-name
-            - {{ printf "%-config" (include "common.names.fullname" .) }}
+            - {{ printf "%s-config" (include "common.names.fullname" .) }}
             {{- if and .Values.rbac (eq true .Values.rbac.create) }}
             - --service-account-name
             - {{ printf "%s-%s" (include "common.names.fullname" .) $component }}
@@ -103,7 +111,6 @@ spec:
             {{- if .Values.extraEnv }}
             {{- include "common.tplvalues.render" ( dict "value" .Values.extraEnv "context" $ ) | nindent 12 }}
             {{- end }}
-          imagePullPolicy: IfNotPresent
           {{- if .Values.resources }}
           resources:
             {{- include "common.tplvalues.render" (dict "value" .Values.resources "context" $) | nindent 12 }}
@@ -115,4 +122,4 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ printf "%-config" (include "common.names.fullname" .) }}
+            name: {{ printf "%s-config" (include "common.names.fullname" .) | quote }}

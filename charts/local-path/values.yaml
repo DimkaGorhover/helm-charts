@@ -154,6 +154,9 @@ config:
     set -eu
     set -o errexit
     set -o nounset
+    {{- if eq true .Values.config.debug }}
+    set -x
+    {{- end }}
     mkdir -m 0777 -p "${VOL_DIR}"
 
   teardownScript: |-
@@ -161,6 +164,9 @@ config:
     set -eu
     set -o errexit
     set -o nounset
+    {{- if eq true .Values.config.debug }}
+    set -x
+    {{- end }}
     rm -rf "${VOL_DIR}"
 
 rbac:
@@ -192,6 +198,8 @@ helper:
     repository: busybox
     tag: stable
     # pullPolicy: IfNotPresent
+
+  extraEnv: []
 
   ## Local-Path Helper Pod containers' resource requests and limits
   ## ref: https://kubernetes.io/docs/user-guide/compute-resources/

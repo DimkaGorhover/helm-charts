@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ printf "%-config" (include "common.names.fullname" .) }}
-  namespace: "{{ include "common.names.namespace" . }}"
+  name: {{ printf "%-config" (include "common.names.fullname" .) | quote }}
+  namespace: {{ include "common.names.namespace" . | quote }}
   labels:
     {{- include "common.labels.standard" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -22,13 +22,13 @@ data:
     {{ toJson $nodePathMap }}
     {{- end }}
 
-  helperPod.yaml: |
+  helperPod.yaml: |-
     ---
     apiVersion: v1
     kind: Pod
     metadata:
-      name: {{ include "common.names.fullname" . }}-helper-pod
-      namespace: "{{ include "common.names.namespace" . }}"
+      name: {{ printf "%s-helper-pod" (include "common.names.fullname" .) | quote }}
+      namespace: {{ include "common.names.namespace" . | quote }}
       labels: {{- include "common.labels.standard" . | nindent 8 }}
         app.kubernetes.io/component: helper-pod
         {{- if .Values.podLabels }}
@@ -51,14 +51,23 @@ data:
       {{- end }}
       containers:
         - name: helper-pod
-          image: {{ include "local-path.helper.image" . }}
+          image: {{ include "local-path.helper.image" $ | quote }}
           imagePullPolicy: IfNotPresent
           {{- if and .Values.helper .Values.helper.containerSecurityContext .Values.helper.containerSecurityContext.enabled }}
-          securityContext: {{- omit .Values.helper.containerSecurityContext "enabled" | toYaml | nindent 12 }}
+          securityContext:
+            {{- include "common.tplvalues.render" ( dict "value" (omit .Values.helper.containerSecurityContext "enabled" ) "context" $ ) | nindent 12 }}
           {{- end }}
-          {{- if .Values.helper.resources }}
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            {{- if .Values.helper.extraEnv }}
+            {{- include "common.tplvalues.render" ( dict "value" .Values.helper.extraEnv "context" $ ) | nindent 12 }}
+            {{- end }}
+          {{- if and .Values.helper .Values.helper.resources }}
           resources:
-            {{- include "common.tplvalues.render" (dict "value" .Values.helper.resources "context" $) | nindent 12 }}
+            {{- include "common.tplvalues.render" ( dict "value" .Values.helper.resources "context" $ ) | nindent 12 }}
           {{- end }}
 
   setup: |-
